@@ -13,6 +13,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import time
+import json
 from collections import defaultdict
 
 app = Flask(__name__)
@@ -54,14 +55,35 @@ except Exception as e:
     STELLAR_AVAILABLE = False
     _STELLAR_ERROR = str(e)
 
-# ─── Registro de periodistas (en memoria) ───
+# ─── Registro de periodistas (persistido en JSON) ───
 
-KNOWN_JOURNALISTS: list[str] = []
+JOURNALISTS_FILE = os.path.join(os.path.dirname(__file__), "journalists.json")
 
-# Cargar la cuenta registry historica si existe
+def _load_journalists() -> list[str]:
+    """Carga la lista de periodistas desde archivo JSON."""
+    if os.path.exists(JOURNALISTS_FILE):
+        try:
+            with open(JOURNALISTS_FILE, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return []
+
+def _save_journalists(journalists: list[str]) -> None:
+    """Persiste la lista de periodistas a archivo JSON."""
+    try:
+        with open(JOURNALISTS_FILE, "w") as f:
+            json.dump(journalists, f)
+    except IOError:
+        pass
+
+KNOWN_JOURNALISTS: list[str] = _load_journalists()
+
+# Cargar la cuenta registry historica si existe y no esta ya en la lista
 _registry_key = os.getenv("REGISTRY_PUBLIC_KEY", "").strip()
-if _registry_key:
+if _registry_key and _registry_key not in KNOWN_JOURNALISTS:
     KNOWN_JOURNALISTS.append(_registry_key)
+    _save_journalists(KNOWN_JOURNALISTS)
 
 
 # ─── Endpoints ───
@@ -107,6 +129,7 @@ def register():
             # Registrar al periodista si es nuevo
             if journalist and journalist not in KNOWN_JOURNALISTS:
                 KNOWN_JOURNALISTS.append(journalist)
+                _save_journalists(KNOWN_JOURNALISTS)
 
             return jsonify(result)
 
@@ -163,6 +186,7 @@ def journalists():
             return jsonify({"error": "direccion requerida"}), 400
         if address not in KNOWN_JOURNALISTS:
             KNOWN_JOURNALISTS.append(address)
+            _save_journalists(KNOWN_JOURNALISTS)
         return jsonify({"registered": True, "total": len(KNOWN_JOURNALISTS)})
 
     return jsonify({

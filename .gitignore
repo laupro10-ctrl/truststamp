@@ -52,6 +52,9 @@ Desktop.ini
 *.secret
 *.key
 
+# Runtime data (persistencia de periodistas)
+backend/journalists.json
+
 # Demo credentials (testnet keys — no commitear)
 CREDENCIALES-DEMO.txt
 
