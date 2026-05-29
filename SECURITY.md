@@ -4,6 +4,8 @@
 
 Esta politica aplica al proyecto TruthStamp: frontend (React), backend (Flask), landing page, y toda la infraestructura relacionada.
 
+## Reporting a Vulnerability
+
 ## Reportar una vulnerabilidad
 
 Si descubris una vulnerabilidad de seguridad, **no la reportes como un issue publico**. Envia un correo a:
@@ -55,6 +57,8 @@ TruthStamp es un proyecto open-source sin fines de lucro. No ofrecemos recompens
 | Suplantacion de periodista | Freighter firma con llave privada del usuario |
 | Hash falso on-chain | ManageData es inmutable, la verificacion es criptografica |
 | Backend caido | Frontend tiene fallback Arkiv directo |
+
+## Supported Versions
 
 ## Versiones soportadas
 
