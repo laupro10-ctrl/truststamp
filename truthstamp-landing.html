@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TruthStamp — La verdad anclada a blockchain</title>
+<meta name="description" content="Notario digital descentralizado para contenido real. Registra y verifica la autenticidad de fotos, videos y artículos en la red Stellar." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<!-- QR generator (graceful fallback if unreachable) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+  :root {
+    --bg:        oklch(0.165 0.012 250);
+    --bg-2:      oklch(0.205 0.013 250);
+    --surface:   oklch(0.225 0.014 250);
+    --line:      oklch(0.32 0.015 250);
+    --line-soft: oklch(0.27 0.013 250);
+    --text:      oklch(0.96 0.005 250);
+    --muted:     oklch(0.70 0.012 250);
+    --faint:     oklch(0.55 0.012 250);
+
+    --accent:    oklch(0.84 0.16 158);
+    --accent-dim:oklch(0.84 0.16 158 / 0.14);
+    --accent-line:oklch(0.84 0.16 158 / 0.30);
+
+    --danger:    oklch(0.70 0.17 25);
+    --danger-dim:oklch(0.70 0.17 25 / 0.13);
+    --danger-line:oklch(0.70 0.17 25 / 0.32);
+
+    --warn:      oklch(0.84 0.14 85);
+    --warn-dim:  oklch(0.84 0.14 85 / 0.13);
+    --warn-line: oklch(0.84 0.14 85 / 0.34);
+
+    --maxw: 1120px;
+    --r: 14px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, oklch(0.96 0.005 250 / 0.022) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(0.96 0.005 250 / 0.022) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, black, transparent 75%);
+            mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, black, transparent 75%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 28px; position: relative; z-index: 1; }
+  a { color: inherit; text-decoration: none; }
+  ::selection { background: var(--accent); color: var(--bg); }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  /* ---------- NAV ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: oklch(0.165 0.012 250 / 0.72);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s var(--ease);
+  }
+  nav.scrolled { border-bottom-color: var(--line-soft); }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 70px; }
+  .brand { display: flex; align-items: center; gap: 11px; font-weight: 600; font-size: 18px; letter-spacing: -0.01em; }
+  .seal {
+    width: 26px; height: 26px; border-radius: 7px; border: 1.5px solid var(--accent);
+    display: grid; place-items: center; color: var(--accent); flex: none;
+  }
+  .seal::after { content: "✓"; font-size: 14px; font-weight: 700; }
+  .nav-links { display: flex; align-items: center; gap: 30px; }
+  .nav-links a.navlink { color: var(--muted); font-size: 15px; font-weight: 500; transition: color 0.2s; }
+  .nav-links a.navlink:hover { color: var(--text); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+    padding: 12px 20px; min-height: 44px; border-radius: 10px;
+    border: 1px solid transparent; transition: all 0.2s var(--ease); letter-spacing: -0.005em;
+  }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--text); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--accent-line); color: var(--accent); }
+  .btn-sm { padding: 9px 16px; min-height: 40px; font-size: 14px; }
+
+  /* ---------- shared ---------- */
+  section { position: relative; z-index: 1; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin: 0 0 22px;
+  }
+  .eyebrow::before { content: ""; width: 22px; height: 1px; background: var(--accent-line); }
+  h1, h2, h3 { letter-spacing: -0.025em; line-height: 1.06; font-weight: 600; margin: 0; }
+  .lead { color: var(--muted); font-size: clamp(17px, 2.2vw, 20px); line-height: 1.55; }
+  .section-pad { padding: clamp(64px, 10vw, 110px) 0; }
+
+  /* ---------- HERO ---------- */
+  .hero { padding: clamp(70px, 12vw, 130px) 0 clamp(60px, 9vw, 96px); }
+  .hero-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: clamp(40px, 6vw, 80px); align-items: center; }
+  .hero h1 { font-size: clamp(46px, 8vw, 90px); font-weight: 700; letter-spacing: -0.04em; }
+  .hero h1 .accent { color: var(--accent); }
+  .hero .sub { font-size: clamp(19px, 2.6vw, 24px); color: var(--text); margin: 26px 0 0; max-width: 18ch; font-weight: 500; }
+  .hero .tagline {
+    margin: 28px 0 0; padding: 14px 18px; border-left: 2px solid var(--accent);
+    background: var(--accent-dim); border-radius: 0 10px 10px 0;
+    font-family: "IBM Plex Mono", monospace; font-size: 15px; color: var(--text); line-height: 1.5; max-width: 40ch;
+  }
+  .hero .tagline b { color: var(--accent); font-weight: 600; }
+  .hero-cta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 36px; }
+
+  .proof {
+    background: linear-gradient(180deg, var(--surface), var(--bg-2));
+    border: 1px solid var(--line); border-radius: var(--r); padding: 22px;
+    box-shadow: 0 30px 60px -30px oklch(0 0 0 / 0.7); font-family: "IBM Plex Mono", monospace;
+  }
+  .proof-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .proof-head .dot-row { display: flex; gap: 6px; }
+  .proof-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .proof-head .tag { font-size: 12px; color: var(--faint); letter-spacing: 0.05em; }
+  .proof-row { margin-bottom: 16px; }
+  .proof-row .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); display: block; margin-bottom: 5px; }
+  .proof-row .v { font-size: 13.5px; color: var(--muted); word-break: break-all; line-height: 1.5; }
+  .proof-row .v .hl { color: var(--text); }
+  .verified-badge {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--accent-dim);
+    border: 1px solid var(--accent-line); color: var(--accent); padding: 8px 14px;
+    border-radius: 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .verified-badge .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2.4s var(--ease) infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 oklch(0.84 0.16 158 / 0.5); }
+    70% { box-shadow: 0 0 0 9px oklch(0.84 0.16 158 / 0); }
+    100% { box-shadow: 0 0 0 0 oklch(0.84 0.16 158 / 0); }
+  }
+
+  /* ---------- PROBLEM ---------- */
+  .problem { border-top: 1px solid var(--line-soft); }
+  .problem-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: clamp(36px, 5vw, 70px); align-items: start; }
+  .problem h2 { font-size: clamp(32px, 4.6vw, 48px); }
+  .prob-list { display: flex; flex-direction: column; gap: 2px; }
+  .prob-item { display: grid; grid-template-columns: auto 1fr; gap: 20px; padding: 22px 0; border-bottom: 1px solid var(--line-soft); align-items: baseline; }
+  .prob-item:first-child { border-top: 1px solid var(--line-soft); }
+  .prob-item .num { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--accent); padding-top: 4px; }
+  .prob-item .big { font-size: clamp(22px, 3vw, 28px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+  .prob-item .big em { font-style: normal; color: var(--accent); }
+  .prob-item .desc { color: var(--muted); font-size: 16px; margin-top: 7px; }
+
+  /* ---------- HOW IT WORKS ---------- */
+  .how { border-top: 1px solid var(--line-soft); background: var(--bg-2); }
+  .how-head { max-width: 660px; margin-bottom: 44px; }
+  .how-head h2 { font-size: clamp(32px, 4.6vw, 48px); }
+  .how-head p { margin-top: 18px; }
+
+  /* tab toggle */
+  .demo-tabs {
+    display: inline-flex; gap: 6px; padding: 6px; border: 1px solid var(--line-soft);
+    background: var(--bg); border-radius: 14px; margin-bottom: 36px;
+  }
+  .demo-tab {
+    display: inline-flex; align-items: center; gap: 10px; cursor: pointer;
+    font-family: inherit; font-size: 15px; font-weight: 600; color: var(--muted);
+    background: transparent; border: 0; padding: 11px 20px; min-height: 44px;
+    border-radius: 9px; transition: all 0.2s var(--ease); letter-spacing: -0.005em;
+  }
+  .demo-tab .tdot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; flex: none; }
+  .demo-tab[data-tab="reg"] { --c: var(--accent); }
+  .demo-tab[data-tab="ver"] { --c: var(--warn); }
+  .demo-tab:hover { color: var(--text); }
+  .demo-tab.active { color: var(--text); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .demo-tab.active .tdot { color: var(--c); box-shadow: 0 0 12px var(--c); }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeUp 0.4s var(--ease); }
+
+  .flow-label { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; font-family: "IBM Plex Mono", monospace; font-size: 14px; letter-spacing: 0.04em; color: var(--text); font-weight: 500; }
+  .flow-label .chip { font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); }
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 40px; }
+  .step { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 12px; padding: 22px 20px; position: relative; transition: border-color 0.25s var(--ease), transform 0.25s var(--ease); }
+  .step:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+  .step.warnstep:hover { border-color: var(--warn-line); }
+  .step .idx { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--accent); letter-spacing: 0.1em; }
+  .step.warnstep .idx { color: var(--warn); }
+  .step h4 { font-size: 18px; font-weight: 600; margin: 14px 0 8px; letter-spacing: -0.01em; }
+  .step p { font-size: 14.5px; color: var(--muted); margin: 0; line-height: 1.5; }
+  .step .arrow { position: absolute; right: -11px; top: 50%; transform: translateY(-50%); color: var(--faint); z-index: 2; font-size: 16px; }
+  .step:last-child .arrow { display: none; }
+
+  /* demo card */
+  .demo { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; max-width: 860px; }
+  .demo.reg { box-shadow: 0 0 0 1px var(--accent-line), 0 24px 50px -34px oklch(0 0 0 / 0.8); }
+  .demo.ver { box-shadow: 0 0 0 1px var(--warn-line), 0 24px 50px -34px oklch(0 0 0 / 0.8); }
+  .demo-bar { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+  .demo-bar .bdot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .demo.reg .bdot { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .demo.ver .bdot { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+  .demo-bar .label { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--muted); letter-spacing: 0.04em; }
+  .demo-bar .label b { color: var(--text); font-weight: 600; }
+  .demo.reg .label b { color: var(--accent); }
+  .demo.ver .label b { color: var(--warn); }
+  .api-status { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--faint); }
+  .api-status .sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .api-status.online .sdot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .api-status.online { color: var(--muted); }
+
+  .demo-body { padding: 26px 24px; }
+  .drop { border: 1.5px dashed var(--line); border-radius: 12px; padding: 36px 24px; text-align: center; cursor: pointer; transition: all 0.2s var(--ease); background: oklch(0.18 0.012 250 / 0.5); }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-dim); }
+  .demo.ver .drop:hover, .demo.ver .drop.over { border-color: var(--warn); background: var(--warn-dim); }
+  .drop .di { font-family: "IBM Plex Mono", monospace; font-size: 22px; margin-bottom: 12px; }
+  .demo.reg .drop .di { color: var(--accent); }
+  .demo.ver .drop .di { color: var(--warn); }
+  .drop .dt { font-size: 16px; font-weight: 500; }
+  .drop .dh { color: var(--faint); font-size: 13.5px; margin-top: 6px; }
+
+  /* preview */
+  .preview { display: none; align-items: center; gap: 16px; margin-top: 18px; padding: 14px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--bg-2); }
+  .preview.show { display: flex; animation: fadeUp 0.35s var(--ease); }
+  .preview .thumb { width: 88px; height: 88px; border-radius: 9px; flex: none; overflow: hidden; background: var(--bg); border: 1px solid var(--line-soft); display: grid; place-items: center; }
+  .preview .thumb img, .preview .thumb canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .preview .thumb .gico { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--accent); font-weight: 600; }
+  .demo.ver .preview .thumb .gico { color: var(--warn); }
+  .preview .pmeta { min-width: 0; }
+  .preview .pname { font-weight: 600; font-size: 15.5px; word-break: break-all; line-height: 1.3; }
+  .preview .psize { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--faint); margin-top: 4px; }
+
+  /* progress */
+  .progress { height: 3px; border-radius: 3px; background: var(--line-soft); margin-top: 16px; overflow: hidden; display: none; }
+  .progress.show { display: block; }
+  .progress .bar { height: 100%; width: 0%; background: var(--accent); border-radius: 3px; transition: width 0.18s linear; }
+  .demo.ver .progress .bar { background: var(--warn); }
+  .progress-label { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--faint); margin-top: 8px; display: none; }
+  .progress-label.show { display: block; }
+
+  /* output rows */
+  .demo-out { margin-top: 20px; display: none; }
+  .demo-out.show { display: block; animation: fadeUp 0.45s var(--ease); }
+  .out-line { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); align-items: baseline; }
+  .out-line .ok { font-family: "IBM Plex Mono", monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); }
+  .out-line .ov { font-family: "IBM Plex Mono", monospace; font-size: 13.5px; color: var(--text); word-break: break-all; line-height: 1.55; }
+  .out-line .ov.accentv { color: var(--accent); }
+  .stepload { color: var(--faint) !important; }
+
+  .copywrap { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .copy-btn {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: 0.05em;
+    color: var(--muted); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 3px 9px; min-height: 26px; cursor: pointer; transition: all 0.18s var(--ease); white-space: nowrap;
+  }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent-line); }
+  .copy-btn.done { color: var(--accent); border-color: var(--accent-line); }
+  .tx-link { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-line); }
+  .tx-link:hover { border-bottom-color: var(--accent); }
+
+  /* result cards */
+  .result-slot { margin-top: 20px; }
+  .res-card { padding: 20px; border-radius: 12px; display: flex; gap: 16px; align-items: flex-start; animation: fadeUp 0.45s var(--ease); }
+  .res-card .ric { font-size: 22px; font-weight: 700; flex: none; line-height: 1.1; }
+  .res-card .rt { font-weight: 600; font-size: 16.5px; }
+  .res-card .rs { color: var(--muted); font-size: 14px; margin-top: 4px; line-height: 1.5; }
+  .res-card .rs a { color: inherit; border-bottom: 1px solid currentColor; }
+  .res-ok   { border: 1px solid var(--accent-line); background: var(--accent-dim); }
+  .res-ok   .ric { color: var(--accent); }
+  .res-warn { border: 1px solid var(--warn-line);   background: var(--warn-dim); }
+  .res-warn .ric { color: var(--warn); }
+  .res-warn .rs a { color: var(--warn); }
+  .cert-actions { margin-top: 14px; }
+
+  /* big seal (verification success) */
+  .seal-result { text-align: center; padding: 30px 20px; border: 1px solid var(--accent-line); border-radius: 14px; background: var(--accent-dim); }
+  .seal-big {
+    width: 96px; height: 96px; border-radius: 50%; border: 2px solid var(--accent);
+    display: grid; place-items: center; color: var(--accent); margin: 0 auto 18px; position: relative;
+  }
+  .seal-big::after { content: "✓"; font-size: 48px; font-weight: 700; }
+  .seal-big .ring { position: absolute; inset: -8px; border-radius: 50%; border: 1px solid var(--accent-line); }
+  .seal-result.animate .seal-big { animation: sealPop 0.6s var(--ease) both; }
+  .seal-result.animate .seal-big .ring { animation: ringPulse 1.8s var(--ease) infinite 0.4s; }
+  @keyframes sealPop { 0% { transform: scale(0.3) rotate(-16deg); opacity: 0; } 60% { transform: scale(1.1) rotate(4deg); } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+  @keyframes ringPulse { 0% { transform: scale(1); opacity: 0.7; } 70% { transform: scale(1.35); opacity: 0; } 100% { opacity: 0; } }
+  .seal-result .st { font-size: clamp(24px, 4vw, 32px); font-weight: 700; letter-spacing: -0.02em; }
+  .seal-result .ss { color: var(--muted); margin-top: 8px; font-size: 15px; }
+  .seal-meta { margin-top: 20px; text-align: left; border-top: 1px solid var(--accent-line); padding-top: 16px; }
+
+  /* fail card */
+  .fail-result { text-align: center; padding: 30px 20px; border: 1px solid var(--danger-line); border-radius: 14px; background: var(--danger-dim); }
+  .fail-x { width: 92px; height: 92px; border-radius: 50%; border: 2px solid var(--danger); display: grid; place-items: center; color: var(--danger); margin: 0 auto 18px; }
+  .fail-x::after { content: "✕"; font-size: 44px; font-weight: 700; }
+  .fail-result.animate .fail-x { animation: shakeIn 0.55s var(--ease) both; }
+  @keyframes shakeIn { 0% { transform: scale(0.5); opacity: 0; } 40% { transform: scale(1.05); opacity: 1; } 55% { transform: translateX(-7px); } 70% { transform: translateX(6px); } 85% { transform: translateX(-3px); } 100% { transform: translateX(0); } }
+  .fail-result .st { font-size: clamp(24px, 4vw, 32px); font-weight: 700; letter-spacing: -0.02em; color: var(--danger); }
+  .fail-result .ss { color: var(--muted); margin-top: 8px; font-size: 15px; max-width: 42ch; margin-left: auto; margin-right: auto; }
+
+  .demo-note { color: var(--faint); font-size: 13px; margin-top: 18px; font-family: "IBM Plex Mono", monospace; }
+
+  /* recent registrations */
+  .recent { max-width: 860px; margin: 26px 0 0; }
+  .recent-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .recent-head .rh-t { font-family: "IBM Plex Mono", monospace; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+  .recent-head .rh-c { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--faint); }
+  .recent-list { border: 1px solid var(--line-soft); border-radius: 12px; overflow: hidden; }
+  .recent-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: 16px; align-items: center; padding: 13px 18px; border-bottom: 1px solid var(--line-soft); transition: background 0.18s var(--ease); }
+  .recent-row:last-child { border-bottom: none; }
+  .recent-row:hover { background: var(--bg-2); }
+  .recent-row .rdot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+  .recent-row .rname { font-weight: 500; font-size: 14.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .recent-row .rhash { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--faint); }
+  .recent-row .rtime { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .recent-empty { padding: 26px 18px; text-align: center; color: var(--faint); font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+  .recent-row.fresh { animation: rowIn 0.5s var(--ease) both; }
+  @keyframes rowIn { from { opacity: 0; transform: translateY(-8px); background: var(--accent-dim); } to { opacity: 1; transform: none; } }
+
+  /* ---------- WHY STELLAR ---------- */
+  .why { border-top: 1px solid var(--line-soft); }
+  .why-head { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 24px; margin-bottom: 52px; }
+  .why-head h2 { font-size: clamp(32px, 4.6vw, 48px); max-width: 14ch; }
+  .why-head p { max-width: 38ch; }
+  .why-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line-soft); border-radius: var(--r); overflow: hidden; }
+  .why-card { padding: 32px 26px 36px; border-right: 1px solid var(--line-soft); transition: background 0.25s var(--ease); }
+  .why-card:last-child { border-right: none; }
+  .why-card:hover { background: var(--bg-2); }
+  .why-card .wi { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.06em; }
+  .why-card .wbig { font-size: clamp(28px, 3.4vw, 38px); font-weight: 700; letter-spacing: -0.03em; margin: 20px 0 4px; }
+  .why-card .wt { font-size: 16px; font-weight: 600; margin: 12px 0 8px; }
+  .why-card .wd { font-size: 14.5px; color: var(--muted); line-height: 1.5; }
+
+  /* ---------- DIFFERENTIATION ---------- */
+  .diff { border-top: 1px solid var(--line-soft); background: var(--bg-2); }
+  .diff h2 { font-size: clamp(32px, 4.6vw, 48px); max-width: 16ch; }
+  .diff-head { margin-bottom: 48px; }
+  .diff-head p { margin-top: 18px; max-width: 50ch; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line-soft); border-radius: var(--r); }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  th, td { padding: 18px 20px; text-align: left; border-bottom: 1px solid var(--line-soft); font-size: 15px; }
+  thead th { font-family: "IBM Plex Mono", monospace; font-size: 13px; letter-spacing: 0.04em; color: var(--muted); font-weight: 500; vertical-align: bottom; }
+  thead th.us { color: var(--accent); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.feat { color: var(--text); font-weight: 500; }
+  td.cell { color: var(--muted); }
+  .col-us, th.col-us { background: var(--accent-dim); }
+  .yes { color: var(--accent); font-weight: 600; }
+  .no { color: var(--faint); }
+  .mark { font-family: "IBM Plex Mono", monospace; }
+
+  /* ---------- FOOTER CTA ---------- */
+  .footcta { border-top: 1px solid var(--line-soft); text-align: center; padding: clamp(80px, 12vw, 130px) 0; }
+  .footcta h2 { font-size: clamp(36px, 6vw, 64px); font-weight: 700; letter-spacing: -0.035em; max-width: 16ch; margin: 0 auto; }
+  .footcta .lead { margin: 26px auto 0; max-width: 46ch; }
+  .footcta-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 40px; }
+  footer { border-top: 1px solid var(--line-soft); padding: 40px 0; }
+  .foot-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 18px; }
+  .foot-inner .meta { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--faint); }
+  .foot-inner .meta b { color: var(--muted); font-weight: 500; }
+  .foot-links { display: flex; gap: 24px; }
+  .foot-links a { color: var(--muted); font-size: 14px; transition: color 0.2s; }
+  .foot-links a:hover { color: var(--accent); }
+
+  /* ---------- reveal ---------- */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); }
+  .reveal.in { opacity: 1; transform: none; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1 !important; transform: none !important; transition: none; }
+    .panel.active, .demo-out.show, .preview.show, .res-card, .recent-row.fresh { animation: none !important; }
+    .verified-badge .pulse, .seal-result .seal-big .ring { animation: none !important; }
+    .seal-result.animate .seal-big, .fail-result.animate .fail-x { animation: none !important; }
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 940px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .hero .proof { max-width: 480px; }
+    .problem-grid { grid-template-columns: 1fr; gap: 32px; }
+    .flow { grid-template-columns: repeat(2, 1fr); }
+    .step .arrow { display: none; }
+    .why-grid { grid-template-columns: repeat(2, 1fr); }
+    .why-card:nth-child(2) { border-right: none; }
+    .why-card:nth-child(1), .why-card:nth-child(2) { border-bottom: 1px solid var(--line-soft); }
+  }
+  @media (max-width: 620px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 20px; }
+    .nav-links .navlink { display: none; }
+    .flow { grid-template-columns: 1fr; }
+    .why-grid { grid-template-columns: 1fr; }
+    .why-card { border-right: none; border-bottom: 1px solid var(--line-soft); }
+    .why-card:last-child { border-bottom: none; }
+    .out-line { grid-template-columns: 1fr; gap: 4px; }
+    .hero-cta .btn, .footcta-actions .btn { width: 100%; }
+    .demo-tabs { display: flex; width: 100%; }
+    .demo-tab { flex: 1; justify-content: center; }
+    .recent-row { grid-template-columns: auto 1fr auto; }
+    .recent-row .rhash { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="wrap nav-inner">
+    <a href="#top" class="brand"><span class="seal" aria-hidden="true"></span>TruthStamp</a>
+    <div class="nav-links">
+      <a href="#problema" class="navlink">El problema</a>
+      <a href="#como" class="navlink">Cómo funciona</a>
+      <a href="#stellar" class="navlink">Por qué Stellar</a>
+      <a href="https://github.com/laupro10-ctrl/truststamp" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header id="top" class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow reveal">Notario digital descentralizado</p>
+      <h1 class="reveal">La verdad,<br /><span class="accent">anclada</span> a blockchain.</h1>
+      <p class="sub reveal">Registra y verifica contenido real sobre la red Stellar.</p>
+      <p class="tagline mono reveal">Si el hash está en Stellar,<br />el contenido es <b>auténtico</b>.</p>
+      <div class="hero-cta reveal">
+        <a href="#como" class="btn btn-primary">Probar la demo en vivo</a>
+        <a href="#stellar" class="btn btn-ghost">Por qué Stellar</a>
+      </div>
+    </div>
+    <div class="proof reveal" aria-hidden="true">
+      <div class="proof-head">
+        <div class="dot-row"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <span class="tag mono">stellar · testnet</span>
+      </div>
+      <div class="proof-row"><span class="k">Archivo</span><span class="v"><span class="hl">reportaje_frontera.jpg</span> · 4.2 MB</span></div>
+      <div class="proof-row"><span class="k">SHA-256</span><span class="v">a3f1c9e2bd47<span class="hl">…</span>8e0d5f2a1c6b9d</span></div>
+      <div class="proof-row"><span class="k">Transacción</span><span class="v">7d2e…<span class="hl">a91f</span> · ManageData · 0.00001 XLM</span></div>
+      <div class="proof-row" style="border:0;margin:0;"><span class="verified-badge"><span class="pulse"></span>Auténtico · anclado en ledger #54 209 117</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- PROBLEM -->
+<section id="problema" class="problem section-pad">
+  <div class="wrap problem-grid">
+    <div>
+      <p class="eyebrow reveal">El problema</p>
+      <h2 class="reveal">Lo falso viaja más rápido que la verdad.</h2>
+      <p class="lead reveal" style="margin-top:22px;">Verificar autenticidad sigue siendo lento, manual y centralizado — justo cuando la manipulación de contenido se volvió instantánea.</p>
+    </div>
+    <div class="prob-list">
+      <div class="prob-item reveal"><span class="num">01</span><div><div class="big">Los deepfakes crecieron <em>+900%</em> entre 2023 y 2025.</div><p class="desc">El volumen de contenido sintético supera la capacidad humana de revisarlo.</p></div></div>
+      <div class="prob-item reveal"><span class="num">02</span><div><div class="big">Verificar toma <em>horas</em>. Un fake se viraliza en <em>10 minutos</em>.</div><p class="desc">Cuando llega el desmentido, el daño a la confianza ya está hecho.</p></div></div>
+      <div class="prob-item reveal"><span class="num">03</span><div><div class="big">Las plataformas <em>borran los metadatos</em> al publicar.</div><p class="desc">La prueba de origen desaparece en el primer reenvío.</p></div></div>
+      <div class="prob-item reveal"><span class="num">04</span><div><div class="big">C2PA <em>no usa blockchain</em>.</div><p class="desc">Las firmas dependen de autoridades centrales — no de un registro público e inmutable.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="como" class="how section-pad">
+  <div class="wrap">
+    <div class="how-head reveal">
+      <p class="eyebrow">Cómo funciona</p>
+      <h2>Dos flujos. Una sola fuente de verdad.</h2>
+      <p class="lead">El hash se calcula en tu navegador y se ancla en Stellar. Nadie puede alterarlo después — ni siquiera nosotros.</p>
+    </div>
+
+    <!-- TAB TOGGLE -->
+    <div class="demo-tabs reveal" role="tablist" aria-label="Modo de la demo">
+      <button class="demo-tab active" data-tab="reg" role="tab" aria-selected="true"><span class="tdot"></span>Registrar</button>
+      <button class="demo-tab" data-tab="ver" role="tab" aria-selected="false"><span class="tdot"></span>Verificar</button>
+    </div>
+
+    <!-- ============ PANEL: REGISTRAR ============ -->
+    <div class="panel active" id="panel-reg" role="tabpanel">
+      <div class="reveal">
+        <div class="flow-label"><span class="chip mono">Para creadores</span> Registrar contenido</div>
+        <div class="flow">
+          <div class="step"><span class="idx">01</span><h4>Subir archivo</h4><p>Foto, video o artículo. Nunca sale de tu dispositivo.</p><span class="arrow mono">→</span></div>
+          <div class="step"><span class="idx">02</span><h4>Calcular SHA-256</h4><p>Una huella única de 64 caracteres se genera en el navegador.</p><span class="arrow mono">→</span></div>
+          <div class="step"><span class="idx">03</span><h4>Anclar en Stellar</h4><p>El hash se escribe vía operación <span class="mono">ManageData</span>.</p><span class="arrow mono">→</span></div>
+          <div class="step"><span class="idx">04</span><h4>Prueba inmutable</h4><p>El ID de transacción se vuelve evidencia permanente y pública.</p><span class="arrow mono">→</span></div>
+        </div>
+      </div>
+
+      <div class="demo reg reveal">
+        <div class="demo-bar">
+          <span class="bdot"></span>
+          <span class="label mono">registrar · <b>SHA-256 real</b> + anclaje en Stellar</span>
+          <span class="api-status" id="status-reg"><span class="sdot"></span><span class="stxt">verificando backend…</span></span>
+        </div>
+        <div class="demo-body">
+          <div class="drop" id="reg-drop" tabindex="0" role="button" aria-label="Seleccionar un archivo para registrar">
+            <div class="di mono">[ + ]</div>
+            <div class="dt">Arrastra un archivo o haz clic para registrarlo</div>
+            <div class="dh">El cálculo ocurre localmente — solo el hash se envía a Stellar.</div>
+          </div>
+          <input type="file" id="reg-file" hidden />
+
+          <div class="preview" id="reg-preview"><div class="thumb" id="reg-thumb"></div><div class="pmeta"><div class="pname" id="reg-pname"></div><div class="psize" id="reg-psize"></div></div></div>
+          <div class="progress" id="reg-progress"><div class="bar" id="reg-bar"></div></div>
+          <div class="progress-label mono" id="reg-plabel"></div>
+
+          <div class="demo-out" id="reg-out">
+            <div class="out-line"><span class="ok">SHA-256</span><span class="ov accentv copywrap"><span id="reg-hash"></span></span></div>
+            <div class="out-line" id="reg-txline"><span class="ok">Tx Stellar</span><span class="ov" id="reg-tx">—</span></div>
+            <div class="out-line" id="reg-ledgerline"><span class="ok">Ledger</span><span class="ov" id="reg-ledger">—</span></div>
+            <div class="result-slot" id="reg-result"></div>
+          </div>
+          <p class="demo-note" id="reg-note">crypto.subtle.digest('SHA-256') · anclaje vía POST /api/register</p>
+        </div>
+      </div>
+
+      <!-- recent registrations -->
+      <div class="recent reveal">
+        <div class="recent-head">
+          <span class="rh-t">Registros recientes</span>
+          <span class="rh-c" id="recent-count"></span>
+        </div>
+        <div class="recent-list" id="recent-list">
+          <div class="recent-empty">Cargando registros…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL: VERIFICAR ============ -->
+    <div class="panel" id="panel-ver" role="tabpanel">
+      <div class="reveal">
+        <div class="flow-label"><span class="chip mono">Para cualquiera</span> Verificar contenido</div>
+        <div class="flow">
+          <div class="step warnstep"><span class="idx">01</span><h4>Subir el archivo sospechoso</h4><p>El que quieras comprobar, sin crear cuenta.</p><span class="arrow mono">→</span></div>
+          <div class="step warnstep"><span class="idx">02</span><h4>Calcular su hash</h4><p>Se recalcula la misma huella SHA-256.</p><span class="arrow mono">→</span></div>
+          <div class="step warnstep"><span class="idx">03</span><h4>Consultar Stellar</h4><p>Se busca ese hash en el registro on-chain.</p><span class="arrow mono">→</span></div>
+          <div class="step warnstep"><span class="idx">04</span><h4>Resultado claro</h4><p>Auténtico · No registrado.</p><span class="arrow mono">→</span></div>
+        </div>
+      </div>
+
+      <div class="demo ver reveal">
+        <div class="demo-bar">
+          <span class="bdot"></span>
+          <span class="label mono">verificar · consulta el hash <b>on-chain</b></span>
+          <span class="api-status" id="status-ver"><span class="sdot"></span><span class="stxt">verificando backend…</span></span>
+        </div>
+        <div class="demo-body">
+          <div class="drop" id="ver-drop" tabindex="0" role="button" aria-label="Seleccionar un archivo para verificar">
+            <div class="di mono">[ ? ]</div>
+            <div class="dt">Arrastra el archivo a verificar o haz clic</div>
+            <div class="dh">Comprobamos si su huella ya está anclada en Stellar.</div>
+          </div>
+          <input type="file" id="ver-file" hidden />
+
+          <div class="preview" id="ver-preview"><div class="thumb" id="ver-thumb"></div><div class="pmeta"><div class="pname" id="ver-pname"></div><div class="psize" id="ver-psize"></div></div></div>
+          <div class="progress" id="ver-progress"><div class="bar" id="ver-bar"></div></div>
+          <div class="progress-label mono" id="ver-plabel"></div>
+
+          <div class="demo-out" id="ver-out">
+            <div class="out-line"><span class="ok">SHA-256</span><span class="ov copywrap" id="ver-hashwrap"><span id="ver-hash"></span></span></div>
+            <div class="result-slot" id="ver-result"></div>
+          </div>
+          <p class="demo-note" id="ver-note">consulta vía GET /api/verify/{hash}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY STELLAR -->
+<section id="stellar" class="why section-pad">
+  <div class="wrap">
+    <div class="why-head reveal">
+      <h2>Construido sobre Stellar.</h2>
+      <p class="lead">Una red pública diseñada para liquidación rápida, barata y final — exactamente lo que necesita un registro de verdad.</p>
+    </div>
+    <div class="why-grid reveal">
+      <div class="why-card"><span class="wi">01</span><div class="wbig">~5 s</div><div class="wt">Confirmación</div><p class="wd">Las transacciones se cierran en segundos. Anclar es tan rápido como publicar.</p></div>
+      <div class="why-card"><span class="wi">02</span><div class="wbig">0.00001</div><div class="wt">XLM por registro</div><p class="wd">Comisiones casi nulas. Anclar miles de piezas cuesta centavos.</p></div>
+      <div class="why-card"><span class="wi">03</span><div class="wbig">Soroban</div><div class="wt">Contratos inteligentes</div><p class="wd">Lógica programable para autoría, lotes y permisos cuando se necesite.</p></div>
+      <div class="why-card"><span class="wi">04</span><div class="wbig">∞</div><div class="wt">Inmutabilidad total</div><p class="wd">Una vez en el ledger, el hash no se puede editar ni borrar. Por nadie.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- DIFFERENTIATION -->
+<section class="diff section-pad">
+  <div class="wrap">
+    <div class="diff-head reveal">
+      <p class="eyebrow">En qué nos diferenciamos</p>
+      <h2>Verificación abierta, no propiedad de una empresa.</h2>
+      <p class="lead">Otros enfoques resuelven una parte. TruthStamp es el único registro público, sin cuenta y nativo de blockchain.</p>
+    </div>
+    <div class="table-scroll reveal">
+      <table>
+        <thead>
+          <tr><th></th><th class="us col-us">TruthStamp</th><th>C2PA</th><th>Truepic</th><th>Numbers Protocol</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="feat">Registro en blockchain</td><td class="cell col-us"><span class="yes mark">Sí · Stellar</span></td><td class="cell"><span class="no mark">— No</span></td><td class="cell"><span class="no mark">— No</span></td><td class="cell"><span class="yes mark">Sí</span></td></tr>
+          <tr><td class="feat">Público y abierto</td><td class="cell col-us"><span class="yes mark">✓ Sí</span></td><td class="cell">Estándar abierto</td><td class="cell"><span class="no mark">Cerrado / corporativo</span></td><td class="cell"><span class="yes mark">✓ Sí</span></td></tr>
+          <tr><td class="feat">Sin cuenta para verificar</td><td class="cell col-us"><span class="yes mark">✓ Sí</span></td><td class="cell">Depende del visor</td><td class="cell"><span class="no mark">— No</span></td><td class="cell">Depende</td></tr>
+          <tr><td class="feat">Sin token propio</td><td class="cell col-us"><span class="yes mark">✓ Usa XLM nativo</span></td><td class="cell">N/A</td><td class="cell">N/A</td><td class="cell"><span class="no mark">Requiere token propio</span></td></tr>
+          <tr><td class="feat">Costo por registro</td><td class="cell col-us"><span class="yes mark">~0.00001 XLM</span></td><td class="cell">—</td><td class="cell">Licencia / plan</td><td class="cell">Gas variable</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER CTA -->
+<section class="footcta">
+  <div class="wrap">
+    <p class="eyebrow reveal" style="justify-content:center;">IdeaForge 2026 · Stellar + Arkviv</p>
+    <h2 class="reveal">Anclá la verdad antes de que la dupliquen.</h2>
+    <p class="lead reveal">Un notario digital abierto para periodistas, medios e instituciones. Sin intermediarios, sin cuentas, sin confianza ciega.</p>
+    <div class="footcta-actions reveal">
+      <a href="#como" class="btn btn-primary">Probar la demo</a>
+      <a href="https://github.com/laupro10-ctrl/truststamp" target="_blank" rel="noopener" class="btn btn-ghost">Ver el código en GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="brand" style="font-size:16px;"><span class="seal" aria-hidden="true"></span>TruthStamp</div>
+    <div class="meta">Construido para el hackathon <b>IdeaForge 2026</b></div>
+    <div class="foot-links">
+      <a href="https://github.com/laupro10-ctrl/truststamp" target="_blank" rel="noopener">GitHub</a>
+      <a href="#top">Volver arriba</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     CONFIG — cambiar API_BASE por la URL de Render en producción.
+     En localhost usa el backend Flask local automáticamente.
+     ============================================================ */
+  var API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://localhost:5000"
+    : "https://truststamp.onrender.com";
+
+  // Explorer: link a la transacción (Horizon Testnet, como pide el brief).
+  // Para una vista más legible podés usar stellar.expert en su lugar.
+  function explorerUrl(tx) { return "https://horizon-testnet.stellar.org/transactions/" + tx; }
+
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- nav + reveal ---------- */
+  var nav = $("nav");
+  var onScroll = function () { nav.classList.toggle("scrolled", window.scrollY > 8); };
+  window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+
+  var reveals = document.querySelectorAll(".reveal");
+  var forceShow = function (el) { el.style.transition = "none"; el.style.opacity = "1"; el.style.transform = "none"; el.classList.add("in"); };
+  var revealAll = function () { reveals.forEach(forceShow); };
+  if (reduced || !("IntersectionObserver" in window)) {
+    revealAll();
+  } else {
+    var ioFired = false;
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { ioFired = true; e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+    reveals.forEach(function (el) { io.observe(el); });
+    // Safety net independent of viewport math + transition timing: if the IO never fired
+    // (hidden/throttled context) or nothing painted, snap everything visible transition-free.
+    setTimeout(function () {
+      if (!ioFired || document.querySelectorAll(".reveal.in").length === 0) revealAll();
+    }, 1000);
+  }
+
+  /* ---------- tabs ---------- */
+  var tabs = document.querySelectorAll(".demo-tab");
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () {
+      tabs.forEach(function (x) { x.classList.remove("active"); x.setAttribute("aria-selected", "false"); });
+      t.classList.add("active"); t.setAttribute("aria-selected", "true");
+      $("panel-reg").classList.toggle("active", t.dataset.tab === "reg");
+      $("panel-ver").classList.toggle("active", t.dataset.tab === "ver");
+    });
+  });
+
+  /* ---------- helpers ---------- */
+  function fmtSize(b) {
+    if (b < 1024) return b + " B";
+    if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
+    return (b / 1048576).toFixed(2) + " MB";
+  }
+  function rndHex(n) { var s = "", c = "0123456789abcdef"; for (var i = 0; i < n; i++) s += c[Math.floor(Math.random() * 16)]; return s; }
+  function shortHash(h) { return h.slice(0, 10) + "…" + h.slice(-6); }
+  function shortTx(h) { return h.slice(0, 8) + "…" + h.slice(-6); }
+  function nowISO() { return new Date().toISOString(); }
+  function timeAgo(iso) {
+    var d = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (d < 60) return "hace " + Math.max(1, Math.floor(d)) + "s";
+    if (d < 3600) return "hace " + Math.floor(d / 60) + " min";
+    if (d < 86400) return "hace " + Math.floor(d / 3600) + " h";
+    return "hace " + Math.floor(d / 86400) + " d";
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  /* ---------- local fallback store (cuando no hay backend) ---------- */
+  var LS_KEY = "ts_local_registry";
+  function loadStore() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { return {}; } }
+  function saveStore(s) { try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) {} }
+
+  function seedIfEmpty() {
+    var s = loadStore();
+    if (Object.keys(s).length) return s;
+    var seed = [
+      { filename: "rueda_de_prensa_min.mp4", mins: 7 },
+      { filename: "portada_edicion_mayo.jpg", mins: 41 },
+      { filename: "investigacion_aguas.pdf", mins: 95 }
+    ];
+    seed.forEach(function (e) {
+      var h = rndHex(64);
+      s[h] = { filename: e.filename, hash: h, tx_id: rndHex(64), ledger: 54200000 + Math.floor(Math.random() * 20000), timestamp: new Date(Date.now() - e.mins * 60000).toISOString() };
+    });
+    saveStore(s);
+    return s;
+  }
+
+  /* ---------- API layer with graceful fallback ---------- */
+  var backendOnline = false;
+
+  function apiFetch(path, opts, timeout) {
+    var ctrl = new AbortController();
+    var to = setTimeout(function () { ctrl.abort(); }, timeout || 8000);
+    return fetch(API_BASE + path, Object.assign({ signal: ctrl.signal }, opts || {}))
+      .then(function (r) { clearTimeout(to); if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+      .catch(function (e) { clearTimeout(to); throw e; });
+  }
+
+  function pickTx(d) { return d.tx_id || d.txId || d.transaction_id || d.transaction || d.hash || d.tx || ""; }
+  function pickLedger(d) { return d.ledger || d.ledger_seq || d.ledgerSeq || d.sequence || null; }
+  function isRegistered(d) { return !!(d && (d.registered || d.exists || d.found || d.authentic || d.verified)); }
+
+  function healthCheck() {
+    return apiFetch("/api/health", {}, 4000)
+      .then(function () { backendOnline = true; })
+      .catch(function () { backendOnline = false; });
+  }
+
+  // verify a hash → { registered, tx_id, ledger, timestamp, filename }
+  function verifyHash(hash) {
+    return apiFetch("/api/verify/" + hash).then(function (d) {
+      return { registered: isRegistered(d), tx_id: pickTx(d), ledger: pickLedger(d), timestamp: d.timestamp || d.time || null, filename: d.filename || d.name || null };
+    }).catch(function () {
+      var s = loadStore(); var rec = s[hash];
+      return rec ? { registered: true, tx_id: rec.tx_id, ledger: rec.ledger, timestamp: rec.timestamp, filename: rec.filename } : { registered: false };
+    });
+  }
+
+  // register a hash → { tx_id, ledger, timestamp }
+  function registerHash(hash, filename) {
+    return apiFetch("/api/register", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hash: hash, filename: filename })
+    }).then(function (d) {
+      var rec = { tx_id: pickTx(d), ledger: pickLedger(d), timestamp: d.timestamp || nowISO(), filename: filename, hash: hash };
+      var s = loadStore(); s[hash] = rec; saveStore(s);
+      return rec;
+    }).catch(function () {
+      var rec = { tx_id: rndHex(64), ledger: 54200000 + Math.floor(Math.random() * 30000), timestamp: nowISO(), filename: filename, hash: hash, simulated: true };
+      var s = loadStore(); s[hash] = rec; saveStore(s);
+      return rec;
+    });
+  }
+
+  // recent registrations → array (newest first)
+  function getRegistrations() {
+    return apiFetch("/api/registrations").then(function (d) {
+      var arr = Array.isArray(d) ? d : (d.registrations || d.items || d.data || []);
+      return arr.map(function (e) {
+        return { filename: e.filename || e.name || "archivo", hash: e.hash || pickTx(e), tx_id: pickTx(e), ledger: pickLedger(e), timestamp: e.timestamp || e.time || nowISO() };
+      });
+    }).catch(function () {
+      var s = seedIfEmpty();
+      return Object.keys(s).map(function (k) { return s[k]; }).sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+    });
+  }
+
+  /* ---------- file preview ---------- */
+  function buildPreview(file, prefix) {
+    var thumb = $(prefix + "-thumb");
+    var pv = $(prefix + "-preview");
+    $(prefix + "-pname").textContent = file.name;
+    $(prefix + "-psize").textContent = fmtSize(file.size) + " · " + (file.type || "tipo desconocido");
+    thumb.innerHTML = "";
+    pv.classList.add("show");
+
+    if (file.type.indexOf("image/") === 0) {
+      var img = document.createElement("img");
+      img.alt = ""; img.src = URL.createObjectURL(file);
+      img.onload = function () { URL.revokeObjectURL(img.src); };
+      thumb.appendChild(img);
+    } else if (file.type.indexOf("video/") === 0) {
+      var v = document.createElement("video");
+      v.muted = true; v.playsInline = true; v.preload = "metadata";
+      v.src = URL.createObjectURL(file);
+      v.addEventListener("loadeddata", function () { try { v.currentTime = Math.min(1, (v.duration || 2) / 2); } catch (e) {} });
+      v.addEventListener("seeked", function () {
+        try {
+          var c = document.createElement("canvas");
+          c.width = 88; c.height = 88;
+          var ratio = Math.max(88 / v.videoWidth, 88 / v.videoHeight);
+          var w = v.videoWidth * ratio, h = v.videoHeight * ratio;
+          c.getContext("2d").drawImage(v, (88 - w) / 2, (88 - h) / 2, w, h);
+          thumb.innerHTML = ""; thumb.appendChild(c);
+        } catch (e) { genericIcon(thumb, file); }
+        URL.revokeObjectURL(v.src);
+      });
+      v.addEventListener("error", function () { genericIcon(thumb, file); });
+      genericIcon(thumb, file); // placeholder while seeking
+    } else {
+      genericIcon(thumb, file);
+    }
+  }
+  function genericIcon(thumb, file) {
+    thumb.innerHTML = "";
+    var ext = (file.name.split(".").pop() || "doc").slice(0, 4).toUpperCase();
+    var s = document.createElement("span");
+    s.className = "gico"; s.textContent = "." + ext;
+    thumb.appendChild(s);
+  }
+
+  /* ---------- read with progress + SHA-256 ---------- */
+  function hashFile(file, prefix) {
+    var prog = $(prefix + "-progress"), bar = $(prefix + "-bar"), plabel = $(prefix + "-plabel");
+    prog.classList.add("show"); plabel.classList.add("show");
+    bar.style.width = "0%"; plabel.textContent = "leyendo archivo…";
+
+    return new Promise(function (resolve) {
+      var fr = new FileReader();
+      fr.onprogress = function (e) { if (e.lengthComputable) bar.style.width = (e.loaded / e.total * 92).toFixed(1) + "%"; };
+      fr.onload = function () {
+        bar.style.width = "96%"; plabel.textContent = "calculando SHA-256…";
+        var buf = fr.result;
+        var finish = function (hex) {
+          bar.style.width = "100%"; plabel.textContent = "huella lista";
+          setTimeout(function () { prog.classList.remove("show"); plabel.classList.remove("show"); }, 500);
+          resolve(hex);
+        };
+        if (window.crypto && window.crypto.subtle && window.isSecureContext !== false) {
+          window.crypto.subtle.digest("SHA-256", buf).then(function (dg) {
+            var b = new Uint8Array(dg), hex = "";
+            for (var i = 0; i < b.length; i++) hex += b[i].toString(16).padStart(2, "0");
+            finish(hex);
+          }).catch(function () { finish(rndHex(64)); markIllustrative(prefix); });
+        } else { finish(rndHex(64)); markIllustrative(prefix); }
+      };
+      fr.onerror = function () { resolve(rndHex(64)); markIllustrative(prefix); };
+      fr.readAsArrayBuffer(file);
+    });
+  }
+  function markIllustrative(prefix) {
+    $(prefix + "-note").textContent = "demo ilustrativa · ejecutá sobre HTTPS (Netlify) para el SHA-256 real";
+  }
+
+  /* ---------- copy button ---------- */
+  function copyBtn(text, label) {
+    var b = document.createElement("button");
+    b.className = "copy-btn mono"; b.type = "button"; b.textContent = label || "Copiar";
+    b.addEventListener("click", function (e) {
+      e.preventDefault();
+      var ok = function () { b.classList.add("done"); b.textContent = "✓ Copiado"; setTimeout(function () { b.classList.remove("done"); b.textContent = label || "Copiar"; }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, function () { legacyCopy(text); ok(); });
+      } else { legacyCopy(text); ok(); }
+    });
+    return b;
+  }
+  function legacyCopy(text) {
+    var t = document.createElement("textarea"); t.value = text; t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.appendChild(t); t.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(t);
+  }
+
+  /* ---------- recent registrations render ---------- */
+  function renderRecent(list, freshHash) {
+    var box = $("recent-list"), count = $("recent-count");
+    if (!list.length) { box.innerHTML = '<div class="recent-empty">Todavía no hay registros. ¡Sé el primero arriba!</div>'; count.textContent = ""; return; }
+    var top = list.slice(0, 5);
+    count.textContent = top.length + " de " + list.length;
+    box.innerHTML = top.map(function (r) {
+      var fresh = (freshHash && r.hash === freshHash) ? " fresh" : "";
+      var link = r.tx_id ? explorerUrl(r.tx_id) : "#";
+      return '<a class="recent-row' + fresh + '" href="' + link + '" target="_blank" rel="noopener" title="Ver transacción en Stellar">' +
+        '<span class="rdot"></span>' +
+        '<span class="rname">' + esc(r.filename) + '</span>' +
+        '<span class="rhash mono">' + (r.hash ? shortHash(r.hash) : "") + '</span>' +
+        '<span class="rtime mono">' + timeAgo(r.timestamp) + '</span>' +
+        '</a>';
+    }).join("");
+  }
+  function refreshRecent(freshHash) { getRegistrations().then(function (l) { renderRecent(l, freshHash); }); }
+
+  /* ---------- API status indicator ---------- */
+  function paintStatus() {
+    ["status-reg", "status-ver"].forEach(function (id) {
+      var el = $(id); el.classList.toggle("online", backendOnline);
+      el.querySelector(".stxt").textContent = backendOnline ? "backend conectado" : "modo demo (sin backend)";
+    });
+  }
+
+  /* ============================================================
+     REGISTRO flow
+     ============================================================ */
+  function runRegister(file) {
+    if (!file) return;
+    buildPreview(file, "reg");
+    var out = $("reg-out"); out.classList.add("show");
+    var hashEl = $("reg-hash"), txEl = $("reg-tx"), ledgerEl = $("reg-ledger"), slot = $("reg-result");
+    $("reg-txline").style.display = ""; $("reg-ledgerline").style.display = "";
+    hashEl.textContent = ""; hashEl.className = ""; txEl.textContent = "—"; txEl.classList.add("stepload"); ledgerEl.textContent = "—"; ledgerEl.classList.add("stepload");
+    slot.innerHTML = "";
+
+    hashFile(file, "reg").then(function (hash) {
+      // show hash + copy
+      var hwrap = hashEl.parentNode;
+      hashEl.textContent = hash;
+      hwrap.appendChild(copyBtn(hash, "Copiar"));
+
+      // duplicate check first
+      txEl.textContent = "consultando duplicados…";
+      return verifyHash(hash).then(function (v) {
+        if (v.registered) {
+          // WARN: already registered — no duplicate tx
+          txEl.classList.remove("stepload"); ledgerEl.classList.remove("stepload");
+          txEl.textContent = v.tx_id ? shortTx(v.tx_id) : "—"; ledgerEl.textContent = v.ledger ? ("#" + v.ledger) : "—";
+          var when = v.timestamp ? new Date(v.timestamp).toLocaleString("es") : "anteriormente";
+          var link = v.tx_id ? explorerUrl(v.tx_id) : "#";
+          slot.innerHTML = '<div class="res-card res-warn"><span class="ric">⚠</span><div>' +
+            '<div class="rt">Este archivo ya fue registrado</div>' +
+            '<div class="rs">Fecha original: ' + esc(when) + '. No se creó una transacción duplicada — ' +
+            '<a href="' + link + '" target="_blank" rel="noopener">ver la TX original ↗</a>.</div></div></div>';
+          return;
+        }
+        // not registered → anchor on Stellar
+        txEl.textContent = "anclando en Stellar…";
+        return registerHash(hash, file.name).then(function (rec) {
+          txEl.classList.remove("stepload"); ledgerEl.classList.remove("stepload");
+          var url = explorerUrl(rec.tx_id);
+          txEl.innerHTML = '<a class="tx-link" href="' + url + '" target="_blank" rel="noopener">' + shortTx(rec.tx_id) + ' ↗</a>';
+          var txCopy = copyBtn(rec.tx_id, "Copiar TX"); txEl.appendChild(document.createTextNode(" ")); txEl.appendChild(txCopy);
+          ledgerEl.textContent = rec.ledger ? ("#" + rec.ledger + " · ManageData · 0.00001 XLM") : "ManageData · 0.00001 XLM";
+
+          slot.innerHTML = '<div class="res-card res-ok"><span class="ric">✓</span><div>' +
+            '<div class="rt">Anclado en Stellar' + (rec.simulated ? " (simulado)" : "") + '</div>' +
+            '<div class="rs">Prueba inmutable creada. Cualquiera puede verificar este archivo a partir de ahora.</div>' +
+            '<div class="cert-actions"></div></div></div>';
+          var certBtn = document.createElement("button");
+          certBtn.className = "btn btn-primary btn-sm"; certBtn.type = "button"; certBtn.textContent = "Descargar certificado";
+          certBtn.addEventListener("click", function () { downloadCertificate({ filename: file.name, hash: hash, tx: rec.tx_id, ledger: rec.ledger, timestamp: rec.timestamp }); });
+          slot.querySelector(".cert-actions").appendChild(certBtn);
+
+          refreshRecent(hash);
+        });
+      });
+    });
+  }
+
+  /* ============================================================
+     VERIFICACIÓN flow
+     ============================================================ */
+  function runVerify(file) {
+    if (!file) return;
+    buildPreview(file, "ver");
+    var out = $("ver-out"); out.classList.add("show");
+    var hashEl = $("ver-hash"), hwrap = $("ver-hashwrap"), slot = $("ver-result");
+    hashEl.textContent = ""; slot.innerHTML = "";
+    // remove old copy buttons
+    Array.prototype.slice.call(hwrap.querySelectorAll(".copy-btn")).forEach(function (b) { b.remove(); });
+
+    hashFile(file, "ver").then(function (hash) {
+      hashEl.textContent = hash; hwrap.appendChild(copyBtn(hash, "Copiar"));
+      slot.innerHTML = '<div class="demo-note mono">consultando Stellar…</div>';
+      return verifyHash(hash).then(function (v) {
+        if (v.registered) {
+          var url = v.tx_id ? explorerUrl(v.tx_id) : "#";
+          var when = v.timestamp ? new Date(v.timestamp).toLocaleString("es") : "—";
+          var html = '<div class="seal-result"><div class="seal-big"><span class="ring"></span></div>' +
+            '<div class="st">Auténtico</div>' +
+            '<div class="ss">Esta huella existe en Stellar. El contenido coincide con el registro original.</div>' +
+            '<div class="seal-meta">' +
+              '<div class="out-line"><span class="ok">Tx Stellar</span><span class="ov accentv copywrap">' +
+                (v.tx_id ? '<a class="tx-link" href="' + url + '" target="_blank" rel="noopener">' + shortTx(v.tx_id) + ' ↗</a>' : '—') + '</span></div>' +
+              (v.filename ? '<div class="out-line"><span class="ok">Archivo</span><span class="ov">' + esc(v.filename) + '</span></div>' : '') +
+              (v.ledger ? '<div class="out-line"><span class="ok">Ledger</span><span class="ov">#' + v.ledger + '</span></div>' : '') +
+              '<div class="out-line" style="border:0"><span class="ok">Registrado</span><span class="ov">' + esc(when) + '</span></div>' +
+            '</div></div>';
+          slot.innerHTML = html;
+          var sr = slot.querySelector(".seal-result");
+          if (v.tx_id) { var w = sr.querySelector(".copywrap"); if (w) w.appendChild(copyBtn(v.tx_id, "Copiar TX")); }
+          if (!reduced) { requestAnimationFrame(function () { sr.classList.add("animate"); }); } else { sr.classList.add("animate"); }
+        } else {
+          slot.innerHTML = '<div class="fail-result"><div class="fail-x"></div>' +
+            '<div class="st">No registrado</div>' +
+            '<div class="ss">Esta huella no existe en Stellar. El archivo no fue registrado, o fue modificado después de registrarse — un solo bit distinto produce otro hash.</div></div>';
+          var fr2 = slot.querySelector(".fail-result");
+          if (!reduced) { requestAnimationFrame(function () { fr2.classList.add("animate"); }); } else { fr2.classList.add("animate"); }
+        }
+      });
+    });
+  }
+
+  /* ============================================================
+     Certificate (print → save as PDF) with QR to the TX
+     ============================================================ */
+  function downloadCertificate(d) {
+    var url = explorerUrl(d.tx);
+    var qrImg;
+    if (typeof qrcode !== "undefined") {
+      try { var qr = qrcode(0, "M"); qr.addData(url); qr.make(); qrImg = '<img src="' + qr.createDataURL(6, 8) + '" alt="QR a la transacción" width="150" height="150" />'; }
+      catch (e) { qrImg = '<div class="qr-fb">' + esc(url) + '</div>'; }
+    } else { qrImg = '<div class="qr-fb">' + esc(url) + '</div>'; }
+
+    var when = d.timestamp ? new Date(d.timestamp).toLocaleString("es") : new Date().toLocaleString("es");
+    var w = window.open("", "_blank");
+    if (!w) { alert("Permití las ventanas emergentes para descargar el certificado."); return; }
+    w.document.write(certHTML(d, qrImg, url, when));
+    w.document.close(); w.focus();
+    setTimeout(function () { try { w.print(); } catch (e) {} }, 500);
+  }
+
+  function certHTML(d, qrImg, url, when) {
+    return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>' +
+      '<title>Certificado TruthStamp — ' + esc(d.filename) + '</title>' +
+      '<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>' +
+      '<style>' +
+      '@page{size:A4 landscape;margin:0;}' +
+      '*{box-sizing:border-box;margin:0;padding:0;}' +
+      'body{font-family:"Space Grotesk",system-ui,sans-serif;background:#f4f3ee;color:#16201b;padding:40px;}' +
+      '.cert{max-width:1000px;margin:0 auto;background:#fbfaf6;border:1px solid #d8d6cc;border-radius:8px;padding:54px 60px;position:relative;box-shadow:0 10px 40px -20px rgba(0,0,0,.3);}' +
+      '.cert::before{content:"";position:absolute;inset:14px;border:1px solid #e2e0d6;border-radius:4px;pointer-events:none;}' +
+      '.hd{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e2e0d6;padding-bottom:22px;margin-bottom:30px;}' +
+      '.brand{display:flex;align-items:center;gap:12px;font-weight:600;font-size:22px;letter-spacing:-.01em;}' +
+      '.seal{width:34px;height:34px;border:2px solid #0f9d6b;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#0f9d6b;font-weight:700;font-size:18px;}' +
+      '.kind{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#0f9d6b;}' +
+      '.title{font-size:30px;font-weight:700;letter-spacing:-.025em;margin-bottom:6px;}' +
+      '.subtitle{color:#5d6660;font-size:14px;margin-bottom:30px;}' +
+      '.grid{display:grid;grid-template-columns:1fr 180px;gap:40px;align-items:start;}' +
+      '.row{padding:13px 0;border-bottom:1px solid #ece9df;}' +
+      '.row .k{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8a9189;margin-bottom:4px;}' +
+      '.row .v{font-family:"IBM Plex Mono",monospace;font-size:13px;color:#16201b;word-break:break-all;line-height:1.5;}' +
+      '.row .v.big{font-size:15px;font-family:"Space Grotesk",sans-serif;font-weight:600;}' +
+      '.qr{text-align:center;}' +
+      '.qr img{border:1px solid #e2e0d6;border-radius:6px;background:#fff;padding:6px;}' +
+      '.qr-fb{font-family:"IBM Plex Mono",monospace;font-size:10px;word-break:break-all;color:#5d6660;border:1px solid #e2e0d6;padding:10px;border-radius:6px;}' +
+      '.qr .cap{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#8a9189;margin-top:10px;letter-spacing:.04em;}' +
+      '.ft{display:flex;justify-content:space-between;align-items:flex-end;margin-top:34px;padding-top:20px;border-top:1px solid #e2e0d6;}' +
+      '.ft .net{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#8a9189;}' +
+      '.ft .stamp{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#0f9d6b;border:1px solid #bfe6d4;background:#eafaf2;padding:7px 12px;border-radius:6px;}' +
+      '.noprint{text-align:center;margin-top:24px;}' +
+      '.noprint button{font-family:inherit;font-size:14px;font-weight:600;background:#0f9d6b;color:#fff;border:0;border-radius:8px;padding:11px 22px;cursor:pointer;}' +
+      '@media print{.noprint{display:none;}body{padding:0;background:#fff;}.cert{box-shadow:none;border:none;}}' +
+      '</style></head><body>' +
+      '<div class="cert">' +
+        '<div class="hd"><div class="brand"><span class="seal">✓</span>TruthStamp</div><div class="kind">Certificado de registro</div></div>' +
+        '<div class="title">Constancia de anclaje en blockchain</div>' +
+        '<div class="subtitle">Este documento certifica que la huella criptográfica del archivo fue registrada de forma inmutable en la red Stellar.</div>' +
+        '<div class="grid"><div>' +
+          '<div class="row"><div class="k">Archivo</div><div class="v big">' + esc(d.filename) + '</div></div>' +
+          '<div class="row"><div class="k">Huella SHA-256</div><div class="v">' + esc(d.hash) + '</div></div>' +
+          '<div class="row"><div class="k">ID de transacción (Stellar Testnet)</div><div class="v">' + esc(d.tx) + '</div></div>' +
+          '<div class="row"><div class="k">Ledger</div><div class="v">' + (d.ledger ? "#" + d.ledger : "—") + ' · ManageData · 0.00001 XLM</div></div>' +
+          '<div class="row" style="border:0"><div class="k">Fecha y hora de registro</div><div class="v big">' + esc(when) + '</div></div>' +
+        '</div><div class="qr">' + qrImg + '<div class="cap">Escaneá para ver<br/>la transacción on-chain</div></div></div>' +
+        '<div class="ft"><div class="net">Red: stellar testnet · horizon-testnet.stellar.org</div><div class="stamp">Verificable públicamente</div></div>' +
+      '</div>' +
+      '<div class="noprint"><button onclick="window.print()">Imprimir / Guardar como PDF</button></div>' +
+      '</body></html>';
+  }
+
+  /* ============================================================
+     wire dropzones
+     ============================================================ */
+  function wireDrop(prefix, handler) {
+    var drop = $(prefix + "-drop"), input = $(prefix + "-file");
+    drop.addEventListener("click", function () { input.click(); });
+    drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+    input.addEventListener("change", function () { if (input.files[0]) handler(input.files[0]); });
+    ["dragenter", "dragover"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+    ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+    drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files.length) handler(e.dataTransfer.files[0]); });
+  }
+  wireDrop("reg", runRegister);
+  wireDrop("ver", runVerify);
+
+  /* ---------- boot ---------- */
+  healthCheck().then(function () { paintStatus(); refreshRecent(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TruthStamp">
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="#38DDA0"></rect>
+  <rect x="10.5" y="10.5" width="43" height="43" rx="11" fill="none" stroke="#11261C" stroke-opacity="0.28" stroke-width="1.5"></rect>
+  <path d="M19 33.5 L27.5 42 L45 22.5" stroke="#11261C" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
