@@ -72,16 +72,14 @@ export default function Register() {
     if (!file) return
 
     try {
-      // Paso 1: Conectar Freighter
+      // Paso 1: Intentar conectar Freighter
       setStep('wallet')
       const wallet = await connectWallet()
-      if (!wallet.connected || !wallet.publicKey) {
-        setErrorMsg(wallet.error || 'Conecta Freighter para continuar')
-        setStep('error')
-        show(wallet.error || 'Wallet no conectada', 'error')
-        return
+      const useFreighter = wallet.connected && !!wallet.publicKey
+
+      if (useFreighter) {
+        setJournalistAddress(wallet.publicKey!)
       }
-      setJournalistAddress(wallet.publicKey)
 
       // Paso 2: Hashear
       setStep('hashing')
@@ -90,16 +88,22 @@ export default function Register() {
       setPHash(phash)
       setIsImage(img)
 
-      // Paso 3: Firmar transaccion con Freighter
-      setStep('signing')
-      const { signedXdr } = await createAndSignManageData(
-        sha256, file.name, wallet.publicKey,
-      )
+      // Paso 3: Firmar con Freighter (si esta disponible)
+      let signedXdr = ''
+      if (useFreighter) {
+        setStep('signing')
+        const signed = await createAndSignManageData(
+          sha256, file.name, wallet.publicKey!,
+        )
+        signedXdr = signed.signedXdr
+      }
 
-      // Paso 4: Enviar al backend (submit + Arkiv)
+      // Paso 4: Enviar al backend
       setStep('registering')
       const result = await registerContent(
-        sha256, phash, file.name, signedXdr, wallet.publicKey,
+        sha256, phash, file.name,
+        signedXdr || undefined,
+        wallet.publicKey || undefined,
       )
 
       if (!result.success) {
@@ -198,19 +202,21 @@ export default function Register() {
           <div className="progress-steps">
             <div className={`prog-step ${step === 'wallet' ? 'active' : 'done'}`}>
               <span className="prog-num">{step === 'wallet' ? '1' : '✓'}</span>
-              <span className="prog-label">Conectar Freighter</span>
+              <span className="prog-label">{journalistAddress ? 'Conectar Freighter' : 'Verificando wallet'}</span>
             </div>
             <div className={`prog-step ${step === 'hashing' ? 'active' : step === 'wallet' ? 'pending' : 'done'}`}>
               <span className="prog-num">{step === 'hashing' ? '2' : step === 'wallet' ? '2' : '✓'}</span>
               <span className="prog-label">Calcular hash SHA-256 + pHash</span>
             </div>
-            <div className={`prog-step ${step === 'signing' ? 'active' : step === 'wallet' || step === 'hashing' ? 'pending' : 'done'}`}>
-              <span className="prog-num">{step === 'signing' ? '3' : step === 'wallet' || step === 'hashing' ? '3' : '✓'}</span>
-              <span className="prog-label">Firmar con Freighter</span>
-            </div>
+            {journalistAddress && (
+              <div className={`prog-step ${step === 'signing' ? 'active' : step === 'wallet' || step === 'hashing' ? 'pending' : 'done'}`}>
+                <span className="prog-num">{step === 'signing' ? '3' : step === 'wallet' || step === 'hashing' ? '3' : '✓'}</span>
+                <span className="prog-label">Firmar con Freighter</span>
+              </div>
+            )}
             {/* @ts-expect-error TS narrows step incorrectly after prior conditionals */}
             <div className={`prog-step ${step === 'registering' ? 'active' : step !== 'registering' && step !== 'seal' ? 'pending' : 'done'}`}>
-              <span className="prog-num">{step === 'registering' ? '4' : step === 'seal' ? '✓' : '4'}</span>
+              <span className="prog-num">{step === 'registering' ? (journalistAddress ? '4' : '3') : step === 'seal' ? '✓' : (journalistAddress ? '4' : '3')}</span>
               <span className="prog-label">Anclaje en Stellar</span>
             </div>
           </div>
@@ -261,7 +267,9 @@ export default function Register() {
             </p>
 
             <div className="cert-details">
-              <div className="cert-row"><span>Periodista</span><strong>{journalistAddress.slice(0, 12)}...{journalistAddress.slice(-6)}</strong></div>
+              {journalistAddress && (
+                <div className="cert-row"><span>Periodista</span><strong>{journalistAddress.slice(0, 12)}...{journalistAddress.slice(-6)}</strong></div>
+              )}
               <div className="cert-row"><span>Archivo</span><strong>{file?.name}</strong></div>
               <div className="cert-row"><span>SHA-256</span><code>{sha256.slice(0, 20)}...</code></div>
               {phash && <div className="cert-row"><span>pHash</span><code>{phash}</code></div>}
