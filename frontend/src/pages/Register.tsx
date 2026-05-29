@@ -196,20 +196,21 @@ export default function Register() {
 
         {(step === 'wallet' || step === 'hashing' || step === 'signing' || step === 'registering' || step === 'seal') && (
           <div className="progress-steps">
-            <div className={`prog-step ${step === 'wallet' ? 'active' : (step !== 'wallet' && step !== 'upload' && step !== 'error') ? 'done' : 'pending'}`}>
+            <div className={`prog-step ${step === 'wallet' ? 'active' : 'done'}`}>
               <span className="prog-num">{step === 'wallet' ? '1' : '✓'}</span>
               <span className="prog-label">Conectar Freighter</span>
             </div>
-            <div className={`prog-step ${step === 'hashing' ? 'active' : step !== 'wallet' && step !== 'hashing' && step !== 'upload' && step !== 'error' ? 'done' : 'pending'}`}>
-              <span className="prog-num">{step === 'hashing' ? '2' : step !== 'wallet' && step !== 'hashing' && step !== 'upload' && step !== 'error' ? '✓' : '2'}</span>
+            <div className={`prog-step ${step === 'hashing' ? 'active' : step === 'wallet' ? 'pending' : 'done'}`}>
+              <span className="prog-num">{step === 'hashing' ? '2' : step === 'wallet' ? '2' : '✓'}</span>
               <span className="prog-label">Calcular hash SHA-256 + pHash</span>
             </div>
-            <div className={`prog-step ${step === 'signing' ? 'active' : (step === 'registering' || step === 'seal' || step === 'done') ? 'done' : 'pending'}`}>
-              <span className="prog-num">{step === 'signing' ? '3' : (step === 'registering' || step === 'seal' || step === 'done') ? '✓' : '3'}</span>
+            <div className={`prog-step ${step === 'signing' ? 'active' : step === 'wallet' || step === 'hashing' ? 'pending' : 'done'}`}>
+              <span className="prog-num">{step === 'signing' ? '3' : step === 'wallet' || step === 'hashing' ? '3' : '✓'}</span>
               <span className="prog-label">Firmar con Freighter</span>
             </div>
-            <div className={`prog-step ${step === 'registering' ? 'active' : (step === 'seal' || step === 'done') ? 'done' : 'pending'}`}>
-              <span className="prog-num">{step === 'registering' ? '4' : (step === 'seal' || step === 'done') ? '✓' : '4'}</span>
+            {/* @ts-expect-error TS narrows step incorrectly after prior conditionals */}
+            <div className={`prog-step ${step === 'registering' ? 'active' : step !== 'registering' && step !== 'seal' ? 'pending' : 'done'}`}>
+              <span className="prog-num">{step === 'registering' ? '4' : step === 'seal' ? '✓' : '4'}</span>
               <span className="prog-label">Anclaje en Stellar</span>
             </div>
           </div>
