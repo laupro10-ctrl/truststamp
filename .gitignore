@@ -54,3 +54,7 @@ Desktop.ini
 
 # Demo credentials (testnet keys — no commitear)
 CREDENCIALES-DEMO.txt
+
+# Claude Code
+.claude/
+CLAUDE.md
