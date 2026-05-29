@@ -1,5 +1,7 @@
 # Politica de Seguridad — TruthStamp
 
+> ⚠️ **DISCLAIMER:** TruthStamp es un prototipo de hackathon. Opera sobre Stellar Testnet y Arkiv Braga Testnet. **No usar en mainnet ni con fondos reales.** No esta auditado.
+
 ## Alcance
 
 Esta politica aplica al proyecto TruthStamp: frontend (React), backend (Flask), landing page, y toda la infraestructura relacionada.

@@ -5,6 +5,8 @@
 
 **Hackathon PunaTech 2026 · Sponsors: Stellar + Arkiv**
 
+> ⚠️ **DISCLAIMER:** TruthStamp es un prototipo desarrollado durante un hackathon. Opera sobre Stellar Testnet y Arkiv Braga Testnet. **No usar en mainnet ni con fondos reales.** Las claves en este repositorio son solo de prueba y no tienen valor economico. No esta auditado ni listo para produccion.
+
 ---
 
 ## El problema
