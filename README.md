@@ -122,4 +122,21 @@ Esto garantiza que todos los registros son encontrables independientemente de cu
 
 ---
 
+## Prueba de integración con Arkiv
+
+Wallet en Arkiv Braga testnet: `0x07d6a1254Dc8D351Bb9b282c5ef5D48A102E104c`
+
+Entidad de ejemplo registrada on-chain:
+
+| Campo | Valor |
+|-------|-------|
+| **Entity Key** | `0x9fc7aca6f394d84fbcdaea9af13b96267c5acabc976819cdaee94efc370622dd` |
+| **Archivo** | WhatsApp Image 2026-05-28 at 10.11.30.jpeg |
+| **Timestamp** | 2026-05-30T02:57:53Z |
+| **Stellar TX** | [`1f5876e2...c5f9`](https://stellar.expert/explorer/testnet/tx/1f5876e2ee2f63ad5238fe506851513298d26948d782b53d891606c09937c5f9) |
+
+En total: **5 entidades `truthstamp`** registradas desde esta wallet en Arkiv Braga testnet. Cada registro ancla simultáneamente en Stellar (ManageData) y Arkiv (entidad on-chain).
+
+---
+
 ## Equipo — Hookia · PunaTech 2026
